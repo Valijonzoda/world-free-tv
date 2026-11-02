@@ -9,7 +9,7 @@
     <application
         android:icon="@drawable/banner"
         android:banner="@drawable/banner"
-        android:label="Famelack TV"
+        android:label="World Free TV"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
 
