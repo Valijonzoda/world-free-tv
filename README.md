@@ -1,10 +1,28 @@
-# World Free TV (Android TV)
-Открывает https://famelack.com/tv в WebView.
+# World Free TV
 
-## Сборка APK
-Вариант 1 (GitHub): создай репозиторий, залей эти файлы, вкладка Actions -> Build APK -> Artifacts -> famelack-tv-apk (app-debug.apk).
-Вариант 2: открой папку в Android Studio -> Build -> Build APK(s).
+A minimal Android TV app that opens https://famelack.com/tv in a full-screen WebView.
 
-## Установка на ТВ
-adb connect <IP_ТВ>:5555
-adb install app-debug.apk
+## Features
+
+- Full-screen video playback
+- Appears on the Android TV home screen
+- Remote control friendly: the Back button navigates browser history
+- Requires only the Internet permission
+
+## Requirements
+
+- Android TV or Google TV, Android 5.0 (API 21) or newer
+- Internet connection
+
+## Build
+
+The APK is built automatically by GitHub Actions on every push. Download `world-free-tv-apk` from the Artifacts section of the workflow run.
+
+To build locally, open the project in Android Studio and choose Build > Build APK(s).
+
+## Install
+
+    adb connect <TV_IP>:5555
+    adb install app-debug.apk
+
+Or copy the APK to a USB drive and open it with a file manager on the TV.
