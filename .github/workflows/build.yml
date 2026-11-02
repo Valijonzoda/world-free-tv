@@ -27,11 +27,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -66,20 +65,24 @@ jobs:
 
           path = Path("app/build.gradle.kts")
           content = path.read_text()
-          content, count_code = re.subn(
+
+          content, code_count = re.subn(
               r'versionCode\s*=\s*\d+',
               f'versionCode = {os.environ["APP_CODE"]}',
               content,
               count=1
           )
-          content, count_name = re.subn(
+
+          content, name_count = re.subn(
               r'versionName\s*=\s*"[^"]+"',
               f'versionName = "{os.environ["APP_VERSION"]}"',
               content,
               count=1
           )
-          if count_code != 1 or count_name != 1:
+
+          if code_count != 1 or name_count != 1:
               raise SystemExit("Could not update versionCode or versionName")
+
           path.write_text(content)
           PY
 
@@ -96,6 +99,7 @@ jobs:
         run: |
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           PREVIOUS_TAG=$(git tag --list 'v[0-9]*' --sort=-version:refname | head -n1)
+
           {
             echo "# World Free TV $VERSION"
             echo
