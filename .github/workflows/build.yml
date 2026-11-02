@@ -1,4 +1,4 @@
-name: Build APK
+name: Build and Release APK
 
 on:
   push:
@@ -10,12 +10,14 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -26,12 +28,60 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: platform-tools platforms;android-35 build-tools;35.0.0
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
+
+      - name: Calculate version
+        id: version
+        shell: bash
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git tag --list 'v[0-9]*' --sort=-version:refname | head -n1)
+          VERSION=${LATEST_TAG#v}
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+          PATCH=$((PATCH + 1))
+          VERSION="$MAJOR.$MINOR.$PATCH"
+          TAG="v$VERSION"
+          CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Update app version
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          APP_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("app/build.gradle.kts")
+          content = path.read_text()
+          content, count_code = re.subn(
+              r'versionCode\s*=\s*\d+',
+              f'versionCode = {os.environ["APP_CODE"]}',
+              content,
+              count=1
+          )
+          content, count_name = re.subn(
+              r'versionName\s*=\s*"[^"]+"',
+              f'versionName = "{os.environ["APP_VERSION"]}"',
+              content,
+              count=1
+          )
+          if count_code != 1 or count_name != 1:
+              raise SystemExit("Could not update versionCode or versionName")
+          path.write_text(content)
+          PY
 
       - name: Build APK
         run: gradle assembleDebug --no-daemon
@@ -39,17 +89,32 @@ jobs:
       - name: Prepare APK
         run: cp app/build/outputs/apk/debug/app-debug.apk world-free-tv.apk
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: world-free-tv-apk
-          path: world-free-tv.apk
+      - name: Generate release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+          PREVIOUS_TAG=$(git tag --list 'v[0-9]*' --sort=-version:refname | head -n1)
+          {
+            echo "# World Free TV $VERSION"
+            echo
+            echo "Release date: $DATE"
+            echo
+            echo "## Changes"
+            git log --pretty=format:'- %s' "$PREVIOUS_TAG"..HEAD
+            echo
+            echo
+            echo "## Download"
+            echo "[Download World Free TV APK](https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/world-free-tv.apk)"
+          } > release-notes.md
 
-      - name: Update GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: World Free TV 1.0.0
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: World Free TV ${{ steps.version.outputs.version }}
+          body_path: release-notes.md
           files: world-free-tv.apk
-          overwrite_files: true
+          target_commitish: main
           make_latest: true
