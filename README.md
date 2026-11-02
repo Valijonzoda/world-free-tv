@@ -16,7 +16,7 @@ A minimal Android TV app that opens https://famelack.com/tv in a full-screen Web
 
 ## Build
 
-The APK is built automatically by GitHub Actions on every push. Download `world-free-tv-apk` from the Artifacts section of the workflow run.
+The APK is built automatically by GitHub Actions on every push. Download the latest `world-free-tv.apk` from the [Releases](https://github.com/Valijonzoda/world-free-tv/releases) page.
 
 To build locally, open the project in Android Studio and choose Build > Build APK(s).
 
